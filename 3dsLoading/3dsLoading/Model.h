@@ -24,12 +24,14 @@ private:
 	std::vector<glm::vec3> m_vertices;
 	std::vector<glm::vec2> m_uvs;
 	std::vector<glm::vec3> m_normals;
+	std::vector<unsigned short> m_indices;
 
 	int m_vertsNum;
 
 	GLuint m_vertexBufferID;
 	GLuint m_uvsBufferID;
 	GLuint m_normalBufferID;
+	GLuint m_indexBufferID;
 	GLuint m_shaderID;
 
 	GLuint m_lightDirectionID;
@@ -69,5 +71,8 @@ public:
 private:
 	void RecalculateModelMatrix();
 	bool LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals);
+	void CalculateIndexVBO(std::vector<glm::vec3> inVerts, std::vector<glm::vec2> inUVs, std::vector<glm::vec3> inNormals, std::vector<unsigned short>& outIndices, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals);
+	bool FindSimilarVertex(glm::vec3& inVertex, glm::vec2& inUV, glm::vec3& inNormal, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals, unsigned short& result);
+	bool IsNear(float x, float y);
 };
 

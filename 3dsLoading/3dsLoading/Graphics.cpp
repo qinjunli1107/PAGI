@@ -114,6 +114,8 @@ void Graphics::Frame(float deltaTime)
 {
 	this->m_camera->Frame(this->m_input, deltaTime);
 
+#pragma region Selecting model part
+
 	if (!this->m_selectionKeyPressed)
 	{
 		if (this->m_input->IsKeyDown(KeyCodes::LeftArrow))
@@ -159,6 +161,8 @@ void Graphics::Frame(float deltaTime)
 	{
 		this->m_models[this->m_currentSelected]->Rotate(-10.0f * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
 	}
+
+#pragma endregion
 
 	for each (Model* m in this->m_models)
 	{

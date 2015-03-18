@@ -8,6 +8,7 @@ Model::Model()
 	this->m_vertsNum = 0;
 	this->m_texture = 0;
 	this->m_uvsBufferID = 0;
+	this->m_indexBufferID = 0;
 }
 
 
@@ -34,6 +35,14 @@ bool Model::Initialize(GLuint shaderID, Camera* camera, std::string texturePath,
 		return false;
 	}
 
+	std::vector<glm::vec3> tempVerts;
+	std::vector<glm::vec2> tempUVs;
+	std::vector<glm::vec3> tempNormals;
+	this->CalculateIndexVBO(this->m_vertices, this->m_uvs, this->m_normals, this->m_indices, tempVerts, tempUVs, tempNormals);
+	this->m_vertices = tempVerts;
+	this->m_uvs = tempUVs;
+	this->m_normals = tempNormals;
+
 	this->m_vertsNum = this->m_vertices.size();
 
 	this->m_selectionColor = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -49,6 +58,10 @@ bool Model::Initialize(GLuint shaderID, Camera* camera, std::string texturePath,
 	glGenBuffers(1, &this->m_normalBufferID);
 	glBindBuffer(GL_ARRAY_BUFFER, this->m_normalBufferID);
 	glBufferData(GL_ARRAY_BUFFER, this->m_normals.size() * sizeof(glm::vec3), &this->m_normals[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &this->m_indexBufferID);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->m_indexBufferID);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->m_indices.size() * sizeof(unsigned short), &(this->m_indices[0]), GL_STATIC_DRAW);
 
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, this->m_vertexBufferID);
@@ -131,7 +144,8 @@ void Model::Render(Camera* camera, Light* light)
 	glUniform4f(this->m_lightColorID, lightColor.r, lightColor.g, lightColor.b, lightColor.w);
 	glUniform3f(this->m_selectionColorID, this->m_selectionColor.r, this->m_selectionColor.g, this->m_selectionColor.b);
 
-	glDrawArrays(GL_TRIANGLES, 0, this->m_vertsNum);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->m_indexBufferID);
+	glDrawElements(GL_TRIANGLES, this->m_indices.size(), GL_UNSIGNED_SHORT, (void*)0);
 
 	for (std::vector<Model*>::iterator it = this->m_children.begin(); it != this->m_children.end(); ++it)
 	{
@@ -286,4 +300,54 @@ void Model::Unselect()
 Model* Model::GetParent()
 {
 	return this->m_parent;
+}
+
+void Model::CalculateIndexVBO(std::vector<glm::vec3> inVerts, std::vector<glm::vec2> inUVs, std::vector<glm::vec3> inNormals, std::vector<unsigned short>& outIndices, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals)
+{
+	unsigned int stop = inVerts.size();
+	for (unsigned int i = 0; i < stop; ++i)
+	{
+		unsigned short index;
+		bool found = FindSimilarVertex(inVerts[i], inUVs[i], inNormals[i], outVerts, outUVs, outNormals, index);
+		if (found)
+		{
+			outIndices.push_back(index);
+		}
+		else
+		{
+			outVerts.push_back(inVerts[i]);
+			outUVs.push_back(inUVs[i]);
+			outNormals.push_back(inNormals[i]);
+			outIndices.push_back((unsigned short)outVerts.size() - 1);
+		}
+	}
+}
+
+bool Model::FindSimilarVertex(glm::vec3& inVertex, glm::vec2& inUV, glm::vec3& inNormal, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals, unsigned short& result)
+{
+	unsigned int stop = outVerts.size();
+	for (unsigned int i = 0; i < stop; ++i)
+	{
+		if (
+			this->IsNear(inVertex.x, outVerts[i].x) &&
+			this->IsNear(inVertex.y, outVerts[i].y) &&
+			this->IsNear(inVertex.z, outVerts[i].z) &&
+			this->IsNear(inUV.x, outUVs[i].x) &&
+			this->IsNear(inUV.y, outUVs[i].y) &&
+			this->IsNear(inNormal.x, outNormals[i].x) &&
+			this->IsNear(inNormal.y, outNormals[i].y) &&
+			this->IsNear(inNormal.z, outNormals[i].z)
+			)
+		{
+			result = i;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool Model::IsNear(float x, float y)
+{
+	return fabs(x - y) < 0.01f;
 }

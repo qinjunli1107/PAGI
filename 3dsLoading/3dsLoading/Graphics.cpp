@@ -60,7 +60,7 @@ bool Graphics::Initialize(string appName)
 	glGenVertexArrays(1, &this->m_vertexArrayID);
 	glBindVertexArray(this->m_vertexArrayID);
 
-	this->m_camera = new Camera(glm::vec3(0.0f, 3.0f, 15.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(60.0f), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 3000.0f);
+	this->m_camera = new Camera(glm::vec3(0.0f, 0.0f, 200.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(60.0f), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 3000.0f);
 
 	Model* model = new Model();
 	std::vector<Model*> children;
@@ -73,7 +73,7 @@ bool Graphics::Initialize(string appName)
 		return false;
 	}
 
-	firstChild->Translate(glm::vec3(-5.0f, 0.0f, 0.0f)); 
+	firstChild->Translate(glm::vec3(-120.0f, 0.0f, 0.0f)); 
 
 	if (!model->Initialize(shaderID, this->m_camera, "../Textures/osma.jpg", nullptr, children))
 	{
@@ -82,12 +82,12 @@ bool Graphics::Initialize(string appName)
 	}
 
 	Model* secondChild = new Model();
-	if (!secondChild->Initialize(shaderID, this->m_camera, "../Textures/osma.dds", nullptr, firstChildChildren))
+	if (!secondChild->Initialize(shaderID, this->m_camera, "../Textures/osma.jpg", nullptr, firstChildChildren))
 	{
 		return false;
 	}
 
-	secondChild->Translate(glm::vec3(-5.0f, 3.0f, 0.0f));
+	secondChild->Translate(glm::vec3(-120.0f, 120.0f, 0.0f));
 
 	model->AddChild(firstChild);
 	model->AddChild(secondChild);
@@ -139,19 +139,19 @@ void Graphics::Frame(float deltaTime)
 
 	if (this->m_input->IsKeyDown(KeyCodes::I))
 	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, -5.0f) * deltaTime);
+		this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, -15.0f) * deltaTime);
 	}
 	if (this->m_input->IsKeyDown(KeyCodes::K))
 	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, 5.0f) * deltaTime);
+		this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, 15.0f) * deltaTime);
 	}
 	if (this->m_input->IsKeyDown(KeyCodes::J))
 	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(-5.0f, 0.0f, 0.0f) * deltaTime);
+		this->m_models[this->m_currentSelected]->Translate(glm::vec3(-15.0f, 0.0f, 0.0f) * deltaTime);
 	}
 	if (this->m_input->IsKeyDown(KeyCodes::L))
 	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(5.0f, 0.0f, 0.0f) * deltaTime);
+		this->m_models[this->m_currentSelected]->Translate(glm::vec3(15.0f, 0.0f, 0.0f) * deltaTime);
 	}
 	if (this->m_input->IsKeyDown(KeyCodes::U))
 	{

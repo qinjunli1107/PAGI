@@ -3,3 +3,5 @@
 3dsLoading/Debug/
 3dsLoading/3dsLoading/Debug/
 *.opensdf
+3dsLoading/opengl32.pdb/
+3dsLoading/wkernelbase.pdb/

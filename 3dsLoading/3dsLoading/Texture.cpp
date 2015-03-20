@@ -14,6 +14,7 @@ Texture::~Texture()
 
 bool Texture::Initialize(const std::string const* filePath)
 {
+	this->m_name = *filePath;
 	LoadFromFile(filePath);
 
 	if (this->m_textureID == 0)
@@ -37,4 +38,9 @@ GLuint Texture::GetTextureID()
 void Texture::LoadFromFile(const std::string const* filePath)
 {
 	this->m_textureID = SOIL_load_OGL_texture((*filePath).c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT);
+}
+
+std::string Texture::GetName()
+{
+	return this->m_name;
 }

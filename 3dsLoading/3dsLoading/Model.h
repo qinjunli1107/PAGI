@@ -70,9 +70,6 @@ public:
 
 private:
 	void RecalculateModelMatrix();
-	bool LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals);
-	void CalculateIndexVBO(std::vector<glm::vec3> inVerts, std::vector<glm::vec2> inUVs, std::vector<glm::vec3> inNormals, std::vector<unsigned short>& outIndices, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals);
-	bool FindSimilarVertex(glm::vec3& inVertex, glm::vec2& inUV, glm::vec3& inNormal, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals, unsigned short& result);
-	bool IsNear(float x, float y);
+	bool LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals, std::vector<unsigned short>& indices);
 };
 

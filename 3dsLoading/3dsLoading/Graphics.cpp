@@ -68,14 +68,14 @@ bool Graphics::Initialize(string appName)
 	Model* firstChild = new Model();
 	GLuint shaderID = this->InitializeShaders("VertexShader.glsl", "FragmentShader.glsl");
 
-	if (!firstChild->Initialize(shaderID, this->m_camera, "../Textures/osma.dds", nullptr, firstChildChildren))
+	if (!firstChild->Initialize(shaderID, this->m_camera, "../Textures/osma.jpg", nullptr, firstChildChildren))
 	{
 		return false;
 	}
 
 	firstChild->Translate(glm::vec3(-5.0f, 0.0f, 0.0f)); 
 
-	if (!model->Initialize(shaderID, this->m_camera, "../Textures/osma.dds", nullptr, children))
+	if (!model->Initialize(shaderID, this->m_camera, "../Textures/osma.jpg", nullptr, children))
 	{
 		fprintf(stderr, "Failed to load model (say what?!)\n");
 		return false;

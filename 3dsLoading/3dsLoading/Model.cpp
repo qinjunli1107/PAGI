@@ -30,20 +30,10 @@ bool Model::Initialize(GLuint shaderID, Camera* camera, std::string texturePath,
 	this->m_children = children;
 	this->m_parent = parent;
 
-	if (!this->LoadOBJ("../Models/Cube.obj", this->m_vertices, this->m_uvs, this->m_normals))
+	if (!this->LoadOBJ("../Models/Sphere.obj", this->m_vertices, this->m_uvs, this->m_normals, this->m_indices))
 	{
 		return false;
 	}
-
-	std::vector<glm::vec3> tempVerts;
-	std::vector<glm::vec2> tempUVs;
-	std::vector<glm::vec3> tempNormals;
-	this->CalculateIndexVBO(this->m_vertices, this->m_uvs, this->m_normals, this->m_indices, tempVerts, tempUVs, tempNormals);
-	this->m_vertices = tempVerts;
-	this->m_uvs = tempUVs;
-	this->m_normals = tempNormals;
-
-	this->m_vertsNum = this->m_vertices.size();
 
 	this->m_selectionColor = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -98,6 +88,8 @@ bool Model::Initialize(GLuint shaderID, Camera* camera, std::string texturePath,
 		(void*)0
 		);
 
+	glBindTexture(GL_TEXTURE_2D, this->m_texture->GetTextureID());
+
 	this->m_shaderID = shaderID;
 	glUseProgram(this->m_shaderID);
 
@@ -143,6 +135,8 @@ void Model::Render(Camera* camera, Light* light)
 	glm::vec4 lightColor = light->GetColor();
 	glUniform4f(this->m_lightColorID, lightColor.r, lightColor.g, lightColor.b, lightColor.w);
 	glUniform3f(this->m_selectionColorID, this->m_selectionColor.r, this->m_selectionColor.g, this->m_selectionColor.b);
+
+	glBindTexture(GL_TEXTURE_2D, this->m_texture->GetTextureID());
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->m_indexBufferID);
 	glDrawElements(GL_TRIANGLES, this->m_indices.size(), GL_UNSIGNED_SHORT, (void*)0);
@@ -195,93 +189,190 @@ void Model::RecalculateModelMatrix()
 	this->m_modelMatrix = parentMatrix * this->m_translationMatrix * this->m_rotationMatrix;
 }
 
-bool Model::LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals)
+bool Model::LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals, std::vector<unsigned short>& indices)
 {
-	printf("Loading OBJ file %s...\n", filePath);
+	std::ifstream modelFile;
+	modelFile.open(filePath, std::ios::in);
 
-	std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
-	std::vector<glm::vec3> temp_vertices;
-	std::vector<glm::vec2> temp_uvs;
-	std::vector<glm::vec3> temp_normals;
+	std::vector<glm::vec3> verticesPos;
+	std::vector<glm::vec2> verticesTex;
+	std::vector<glm::vec3> verticesNormal;
+	std::vector<unsigned long> indicesPos;
+	std::vector<unsigned long> indicesTex;
+	std::vector<unsigned long> indicesNormal;
 
+	std::string materialName = "";
+	std::string line = "";
 
-	FILE * file = fopen(filePath, "r");
-	if (file == NULL){
-		printf("Impossible to open the file ! Are you in the right path ? See Tutorial 1 for details\n");
-		getchar();
-		return false;
-	}
-
-	while (1){
-
-		char lineHeader[128];
-		// read the first word of the line
-		int res = fscanf(file, "%s", lineHeader);
-		if (res == EOF)
-			break; // EOF = End Of File. Quit the loop.
-
-		// else : parse lineHeader
-
-		if (strcmp(lineHeader, "v") == 0){
-			glm::vec3 vertex;
-			fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
-			temp_vertices.push_back(vertex);
-		}
-		else if (strcmp(lineHeader, "vt") == 0){
-			glm::vec2 uv;
-			fscanf(file, "%f %f\n", &uv.x, &uv.y);
-			temp_uvs.push_back(uv);
-		}
-		else if (strcmp(lineHeader, "vn") == 0){
-			glm::vec3 normal;
-			fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
-			temp_normals.push_back(normal);
-		}
-		else if (strcmp(lineHeader, "f") == 0){
-			std::string vertex1, vertex2, vertex3;
-			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-			int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
-			if (matches != 9){
-				printf("File can't be read by our simple parser :-( Try exporting with other options\n");
-				return false;
-			}
-			vertexIndices.push_back(vertexIndex[0]);
-			vertexIndices.push_back(vertexIndex[1]);
-			vertexIndices.push_back(vertexIndex[2]);
-			uvIndices.push_back(uvIndex[0]);
-			uvIndices.push_back(uvIndex[1]);
-			uvIndices.push_back(uvIndex[2]);
-			normalIndices.push_back(normalIndex[0]);
-			normalIndices.push_back(normalIndex[1]);
-			normalIndices.push_back(normalIndex[2]);
-		}
-		else{
-			// Probably a comment, eat up the rest of the line
-			char stupidBuffer[1000];
-			fgets(stupidBuffer, 1000, file);
-		}
-
-	}
-
-	// For each vertex of each triangle
-	for (unsigned int i = 0; i < vertexIndices.size(); i++)
+	if (!modelFile.is_open())
 	{
+		fprintf(stderr, "Couldn't find any file with this path: %s\n", filePath);
+	}
+	else
+	{
+		char checkChar = ' ';
+		while (checkChar != EOF)
+		{
+			checkChar = modelFile.get();
+			float x, y, z;
 
-		// Get the indices of its attributes
-		unsigned int vertexIndex = vertexIndices[i];
-		unsigned int uvIndex = uvIndices[i];
-		unsigned int normalIndex = normalIndices[i];
+			int i = 0;
+			switch (checkChar)
+			{
+			case 'v':
+				//Vertices info
+				checkChar = modelFile.get();
+				switch (checkChar)
+				{
+				case ' ':
+					//Vertex position;
+					modelFile >> x >> y >> z;
+					verticesPos.push_back(glm::vec3(x, y, z));
+					break;
+				case 't':
+					//Vertex tex coord
+					modelFile >> x >> y;
+					verticesTex.push_back(glm::vec2(x, y));
+					break;
+				case 'n':
+					//Vertex normal
+					modelFile >> x >> y >> z;
+					verticesNormal.push_back(glm::vec3(x, y, z));
+					break;
+				}
+				break;
+			case 'f':
+				//Faces info (indices info also)
+				//vpos/vnormal/vtex
 
-		// Get the attributes thanks to the index
-		glm::vec3 vertex = temp_vertices[vertexIndex - 1];
-		glm::vec2 uv = temp_uvs[uvIndex - 1];
-		glm::vec3 normal = temp_normals[normalIndex - 1];
+				checkChar = modelFile.get();
+				if (checkChar != ' ')
+				{
+					continue;
+				}
 
-		// Put the attributes in buffers
-		vertices.push_back(vertex);
-		uvs.push_back(uv);
-		normals.push_back(normal);
+				line = "";
+				while (checkChar != '\n')
+				{
+					if (checkChar == EOF)
+					{
+						break;
+					}
+					checkChar = modelFile.get();
+					line += checkChar;
+				}
 
+				i = 0;
+
+				//FIRST VERTEX
+				while (line[i] != '/')
+				{
+					++i;
+				}
+
+				indicesPos.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+
+				i = 0;
+				while (line[i] != '/')
+				{
+					++i;
+				}
+				indicesTex.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+				i = 0;
+
+				while (line[i] != ' ')
+				{
+					++i;
+				}
+				indicesNormal.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+				i = 0;
+
+				//SECOND VERTEX
+				while (line[i] != '/')
+				{
+					++i;
+				}
+
+				indicesPos.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+
+				i = 0;
+				while (line[i] != '/')
+				{
+					++i;
+				}
+				indicesTex.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+				i = 0;
+
+				while (line[i] != ' ')
+				{
+					++i;
+				}
+				indicesNormal.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+				i = 0;
+
+				//THIRD VERTEX
+				while (line[i] != '/')
+				{
+					++i;
+				}
+
+				indicesPos.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+
+				i = 0;
+				while (line[i] != '/')
+				{
+					++i;
+				}
+				indicesTex.push_back(atoi(line.substr(0, i).c_str()));
+				line = line.substr(i + 1);
+				i = 0;
+
+				indicesNormal.push_back(atoi(line.c_str()));
+
+				break;
+			case 'm':
+				//Material info
+				//Later I'll do this
+				break;
+			}
+		}
+	}
+
+	this->m_vertsNum = indicesPos.size();
+
+	std::string myTextureExtenstion = "";
+	std::string myTextureName = this->m_texture->GetName();
+	int i = 0;
+	i = myTextureName.find_last_of('.') + 1;
+	while (myTextureName[i] != '\0')
+	{
+		myTextureExtenstion += myTextureName[i];
+		++i;
+	}
+	bool isDDS = myTextureExtenstion == "dds" || myTextureExtenstion == "DDS";
+
+	for (int i = 0; i < this->m_vertsNum; ++i)
+	{
+		vertices.push_back(verticesPos[indicesPos[i] - 1]);
+		normals.push_back(verticesNormal[indicesNormal[i] - 1]);
+		if (isDDS)
+		{
+			glm::vec2 uv = glm::vec2(1.0f - verticesTex[indicesTex[i] - 1].x, verticesTex[indicesTex[i] - 1].y);
+			uvs.push_back(uv);
+		}
+		else
+		{
+			uvs.push_back(verticesTex[indicesTex[i] - 1]);
+		}
+
+		indices.push_back(i);
 	}
 
 	return true;
@@ -300,54 +391,4 @@ void Model::Unselect()
 Model* Model::GetParent()
 {
 	return this->m_parent;
-}
-
-void Model::CalculateIndexVBO(std::vector<glm::vec3> inVerts, std::vector<glm::vec2> inUVs, std::vector<glm::vec3> inNormals, std::vector<unsigned short>& outIndices, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals)
-{
-	unsigned int stop = inVerts.size();
-	for (unsigned int i = 0; i < stop; ++i)
-	{
-		unsigned short index;
-		bool found = FindSimilarVertex(inVerts[i], inUVs[i], inNormals[i], outVerts, outUVs, outNormals, index);
-		if (found)
-		{
-			outIndices.push_back(index);
-		}
-		else
-		{
-			outVerts.push_back(inVerts[i]);
-			outUVs.push_back(inUVs[i]);
-			outNormals.push_back(inNormals[i]);
-			outIndices.push_back((unsigned short)outVerts.size() - 1);
-		}
-	}
-}
-
-bool Model::FindSimilarVertex(glm::vec3& inVertex, glm::vec2& inUV, glm::vec3& inNormal, std::vector<glm::vec3>& outVerts, std::vector<glm::vec2>& outUVs, std::vector<glm::vec3>& outNormals, unsigned short& result)
-{
-	unsigned int stop = outVerts.size();
-	for (unsigned int i = 0; i < stop; ++i)
-	{
-		if (
-			this->IsNear(inVertex.x, outVerts[i].x) &&
-			this->IsNear(inVertex.y, outVerts[i].y) &&
-			this->IsNear(inVertex.z, outVerts[i].z) &&
-			this->IsNear(inUV.x, outUVs[i].x) &&
-			this->IsNear(inUV.y, outUVs[i].y) &&
-			this->IsNear(inNormal.x, outNormals[i].x) &&
-			this->IsNear(inNormal.y, outNormals[i].y) &&
-			this->IsNear(inNormal.z, outNormals[i].z)
-			)
-		{
-			result = i;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-bool Model::IsNear(float x, float y)
-{
-	return fabs(x - y) < 0.01f;
 }

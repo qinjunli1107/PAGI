@@ -1,0 +1,16 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 24.03.2015 17:40:01
+
+newmtl 01___Default
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588235 0.588235 0.588235
+	Kd 0.588235 0.588235 0.588235
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka C:\Users\Krzysztof\Documents\_Learning\Actual semester\Programowanie aplikacji graficznych\Repo\3dsLoading\Textures\logo.dds
+	map_Kd C:\Users\Krzysztof\Documents\_Learning\Actual semester\Programowanie aplikacji graficznych\Repo\3dsLoading\Textures\logo.dds

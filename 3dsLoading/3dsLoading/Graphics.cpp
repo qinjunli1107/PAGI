@@ -6,7 +6,7 @@ Graphics::Graphics()
 	this->m_camera = 0;
 	this->m_input = 0;
 	this->m_vertexArrayID = 0;
-	this->m_currentSelected = 0;
+	this->m_currentSelected = -1;
 	this->m_selectionKeyPressed = false;
 }
 
@@ -53,7 +53,7 @@ bool Graphics::Initialize(string appName)
 		return false;
 	}
 
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClearColor(0.4f, 0.4f, 0.4f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
@@ -68,43 +68,48 @@ bool Graphics::Initialize(string appName)
 	Model* firstChild = new Model();
 	GLuint shaderID = this->InitializeShaders("VertexShader.glsl", "FragmentShader.glsl");
 
-	if (!firstChild->Initialize(shaderID, this->m_camera, "../Textures/osma.jpg", nullptr, firstChildChildren))
+	if (!firstChild->Initialize(shaderID, this->m_camera))
 	{
 		return false;
 	}
 
-	firstChild->Translate(glm::vec3(-120.0f, 0.0f, 0.0f)); 
+	firstChild->Translate(glm::vec3(-30.0f, 0.0f, 0.0f)); 
 
-	if (!model->Initialize(shaderID, this->m_camera, "../Textures/osma.jpg", nullptr, children))
+	if (!model->Initialize(shaderID, this->m_camera))
 	{
 		fprintf(stderr, "Failed to load model (say what?!)\n");
 		return false;
 	}
 
 	Model* secondChild = new Model();
-	if (!secondChild->Initialize(shaderID, this->m_camera, "../Textures/osma.jpg", nullptr, firstChildChildren))
+	if (!secondChild->Initialize(shaderID, this->m_camera))
 	{
 		return false;
 	}
 
-	secondChild->Translate(glm::vec3(-120.0f, 120.0f, 0.0f));
+	secondChild->Translate(glm::vec3(-30.0f, 30.0f, 0.0f));
 
+	Model* thirdChild = new Model();
+	if (!thirdChild->Initialize(shaderID, this->m_camera))
+	{
+		return false;
+	}
+
+	thirdChild->Translate(glm::vec3(-30.0f, 0.0f, -30.0f));
+
+	firstChild->AddChild(thirdChild);
 	model->AddChild(firstChild);
 	model->AddChild(secondChild);
 
 	this->m_models.push_back(model);
 	this->m_models.push_back(firstChild);
 	this->m_models.push_back(secondChild);
+	this->m_models.push_back(thirdChild);
 
 	this->m_light = new Light();
 	if (!this->m_light->Initialize(glm::vec3(0.0f, -1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f)))
 	{
 		return false;
-	}
-
-	if (this->m_models.size() > 0)
-	{
-		this->m_models[this->m_currentSelected]->Select();
 	}
 
 	return true;
@@ -137,29 +142,32 @@ void Graphics::Frame(float deltaTime)
 		}
 	}
 
-	if (this->m_input->IsKeyDown(KeyCodes::I))
+	if (this->m_currentSelected >= 0)
 	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, -15.0f) * deltaTime);
-	}
-	if (this->m_input->IsKeyDown(KeyCodes::K))
-	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, 15.0f) * deltaTime);
-	}
-	if (this->m_input->IsKeyDown(KeyCodes::J))
-	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(-15.0f, 0.0f, 0.0f) * deltaTime);
-	}
-	if (this->m_input->IsKeyDown(KeyCodes::L))
-	{
-		this->m_models[this->m_currentSelected]->Translate(glm::vec3(15.0f, 0.0f, 0.0f) * deltaTime);
-	}
-	if (this->m_input->IsKeyDown(KeyCodes::U))
-	{
-		this->m_models[this->m_currentSelected]->Rotate(10.0f * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
-	}
-	if (this->m_input->IsKeyDown(KeyCodes::O))
-	{
-		this->m_models[this->m_currentSelected]->Rotate(-10.0f * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+		if (this->m_input->IsKeyDown(KeyCodes::I))
+		{
+			this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, -15.0f) * deltaTime);
+		}
+		if (this->m_input->IsKeyDown(KeyCodes::K))
+		{
+			this->m_models[this->m_currentSelected]->Translate(glm::vec3(0.0f, 0.0f, 15.0f) * deltaTime);
+		}
+		if (this->m_input->IsKeyDown(KeyCodes::J))
+		{
+			this->m_models[this->m_currentSelected]->Translate(glm::vec3(-15.0f, 0.0f, 0.0f) * deltaTime);
+		}
+		if (this->m_input->IsKeyDown(KeyCodes::L))
+		{
+			this->m_models[this->m_currentSelected]->Translate(glm::vec3(15.0f, 0.0f, 0.0f) * deltaTime);
+		}
+		if (this->m_input->IsKeyDown(KeyCodes::U))
+		{
+			this->m_models[this->m_currentSelected]->Rotate(-10.0f * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+		}
+		if (this->m_input->IsKeyDown(KeyCodes::O))
+		{
+			this->m_models[this->m_currentSelected]->Rotate(10.0f * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+		}
 	}
 
 #pragma endregion
@@ -303,22 +311,39 @@ Input* Graphics::GetInput()
 
 void Graphics::SelectNext()
 {
-	this->m_models[this->m_currentSelected]->Unselect();
+	if (this->m_currentSelected >= 0)
+	{
+		this->m_models[this->m_currentSelected]->Unselect();
+	}
 	++this->m_currentSelected;
 	if (this->m_currentSelected >= this->m_models.size())
 	{
-		this->m_currentSelected = 0;
+		this->m_currentSelected = -1;
 	}
-	this->m_models[this->m_currentSelected]->Select();
+	else
+	{
+		this->m_models[this->m_currentSelected]->Select();
+	}
 }
 
 void Graphics::SelectPrevious()
 {
-	this->m_models[this->m_currentSelected]->Unselect();
-	--this->m_currentSelected;
-	if (this->m_currentSelected < 0)
+	if (this->m_currentSelected >= 0)
+	{
+		this->m_models[this->m_currentSelected]->Unselect();
+		--this->m_currentSelected;
+	}
+	else
 	{
 		this->m_currentSelected = this->m_models.size() - 1;
 	}
-	this->m_models[this->m_currentSelected]->Select();
+
+	if (this->m_currentSelected < 0)
+	{
+		this->m_currentSelected = -1;
+	}
+	else
+	{
+		this->m_models[this->m_currentSelected]->Select();
+	}
 }

@@ -2,6 +2,14 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#define _MAIN_CHUNK 0x4D4D
+#define _3D_EDITOR_CHUNK 0x3D3D
+#define _OBJECT_BLOCK 0x4000
+#define _TRIANGULAR_MESH 0x4100
+#define _VERTICES_LIST 0x4110
+#define _FACES_DESCRIPTION 0x4120
+#define _MAPPING_COORDINATES_LIST 0x4140
+
 #include <cstdint>
 #include <OpenGL\glew.h>
 #include <OpenGL\GLM\glm.hpp>
@@ -9,6 +17,10 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <conio.h>
+#include <io.h>
 
 #include "Camera.h"
 #include "Texture.h"
@@ -27,6 +39,7 @@ private:
 	std::vector<unsigned short> m_indices;
 
 	int m_vertsNum;
+	int m_polygonsNum;
 
 	GLuint m_vertexBufferID;
 	GLuint m_uvsBufferID;
@@ -48,11 +61,13 @@ private:
 	std::vector<Model*> m_children;
 	Model* m_parent;
 
+	char m_name[20];
+
 public:
 	Model();
 	~Model();
 
-	bool Initialize(GLuint shaderID, Camera* camera, std::string texturePath, Model* parent, std::vector<Model*> children);
+	bool Initialize(GLuint shaderID, Camera* camera);
 	void Frame(Camera* camera);
 	void Render(Camera* camera, Light* light);
 	void Shutdown();
@@ -71,5 +86,6 @@ public:
 private:
 	void RecalculateModelMatrix();
 	bool LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals, std::vector<unsigned short>& indices);
+	bool Load3DS(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals, std::vector<unsigned short>& indices);
 };
 

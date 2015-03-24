@@ -9,6 +9,10 @@ Model::Model()
 	this->m_texture = 0;
 	this->m_uvsBufferID = 0;
 	this->m_indexBufferID = 0;
+	for (int i = 0; i < 20; ++i)
+	{
+		this->m_name[i] = ' ';
+	}
 }
 
 
@@ -16,21 +20,13 @@ Model::~Model()
 {
 }
 
-bool Model::Initialize(GLuint shaderID, Camera* camera, std::string texturePath, Model* parent, std::vector<Model*> children)
+bool Model::Initialize(GLuint shaderID, Camera* camera)
 {
 	this->m_position = glm::vec3(0.f);
 	this->m_translationMatrix = glm::translate(this->m_position);
 	this->m_rotationMatrix = glm::mat4(1.0f);
-	this->m_texture = new Texture();
-	if (!this->m_texture->Initialize(&texturePath))
-	{
-		return false;
-	}
 
-	this->m_children = children;
-	this->m_parent = parent;
-
-	if (!this->LoadOBJ("../Models/Sphere.obj", this->m_vertices, this->m_uvs, this->m_normals, this->m_indices))
+	if (!LoadOBJ("../Models/Sphere.obj", this->m_vertices, this->m_uvs, this->m_normals, this->m_indices))
 	{
 		return false;
 	}
@@ -182,7 +178,7 @@ void Model::Translate(glm::vec3 direction)
 void Model::RecalculateModelMatrix()
 {
 	glm::mat4 parentMatrix = glm::mat4(1.0f);
-	if (this->m_parent != nullptr)
+	if(this->m_parent != nullptr)
 	{
 		parentMatrix = this->m_parent->m_modelMatrix;
 	}
@@ -338,8 +334,42 @@ bool Model::LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices
 
 				break;
 			case 'm':
-				//Material info
-				//Later I'll do this
+				checkChar = modelFile.get();
+				if (checkChar == 't')
+				{
+					checkChar = modelFile.get();
+					if (checkChar == 'l')
+					{
+						checkChar = modelFile.get();
+						if (checkChar == 'l')
+						{
+							checkChar = modelFile.get();
+							checkChar = modelFile.get();
+							checkChar = modelFile.get();
+							std::getline(modelFile, line);
+							std::string mtlFilePath = "../Models/" + line;
+							std::ifstream mtlFile;
+							mtlFile.open(mtlFilePath, std::ios::in);
+							std::string mtlLine = "";
+							while (std::getline(mtlFile, mtlLine))
+							{
+								if (mtlLine.length() > 8)
+								{
+									std::string header = mtlLine.substr(1, 7);
+									bool equal = false;
+									equal = header[0] == 'm' && header[1] == 'a' && header[2] == 'p' && header[3] == '_' && header[4] == 'K' && header[5] == 'd';
+									if (equal)
+									{
+										std::string texture = mtlLine.substr(8, mtlLine.length() - 1);
+										printf("Model diffuse texture: %s\n", texture.c_str());
+										this->m_texture = new Texture();
+										!this->m_texture->Initialize(&texture);
+									}
+								}
+							}
+						}
+					}
+				}
 				break;
 			}
 		}
@@ -380,15 +410,128 @@ bool Model::LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices
 
 void Model::Select()
 {
-	this->m_selectionColor.r = 1.0f;
+	this->m_selectionColor.r = 0.3f;
 }
 
 void Model::Unselect()
 {
-	this->m_selectionColor.r -= 1.0f;
+	this->m_selectionColor.r = 0.0f;
 }
 
 Model* Model::GetParent()
 {
 	return this->m_parent;
+}
+
+bool Model::Load3DS(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals, std::vector<unsigned short>& indices)
+{
+	FILE* file = fopen(filePath, "rb");
+	if (file == nullptr)
+	{
+		return false;
+	}
+
+	unsigned short chunkID;
+	unsigned int chunkLength;
+	unsigned char charRead;
+	unsigned short qty;
+	unsigned short faceFlags;
+	int i = 0;
+
+	while (ftell(file) < _filelength(_fileno(file)))
+	{
+		fread(&chunkID, sizeof(unsigned short), 1, file);
+		fread(&chunkLength, 4, 1, file);
+
+		switch (chunkID)
+		{
+		case _MAIN_CHUNK:
+			break;
+		case _3D_EDITOR_CHUNK:
+			break;
+		case _OBJECT_BLOCK:
+			i = 0;
+			do
+			{
+				fread(&charRead, 1, 1, file);
+				this->m_name[i] = charRead;
+				++i;
+			} while (charRead != '\0' && i < 20);
+			break;
+		case _TRIANGULAR_MESH:
+			break;
+		case _VERTICES_LIST:
+			fread(&qty, sizeof(unsigned short), 1, file);
+			this->m_vertsNum = qty;
+			printf("Number of vertices: %d\n", this->m_vertsNum);
+			for (i = 0; i < qty; ++i)
+			{
+				glm::vec3 vertex;
+				fread(&vertex.x, sizeof(float), 1, file);
+				fread(&vertex.y, sizeof(float), 1, file);
+				fread(&vertex.z, sizeof(float), 1, file);
+				vertices.push_back(vertex);
+			}
+			break;
+		case _FACES_DESCRIPTION:
+			fread(&qty, sizeof(unsigned short), 1, file);
+			this->m_polygonsNum = qty;
+			printf("Number of polygons: %d\n", this->m_polygonsNum);
+			for (i = 0; i < qty; ++i)
+			{
+				unsigned short ind1, ind2, ind3;
+				fread(&ind1, sizeof(unsigned short), 1, file);
+				fread(&ind2, sizeof(unsigned short), 1, file);
+				fread(&ind3, sizeof(unsigned short), 1, file);
+				fread(&faceFlags, sizeof(unsigned short), 1, file);
+				indices.push_back(ind1);
+				indices.push_back(ind2);
+				indices.push_back(ind3);
+			}
+			break;
+		case _MAPPING_COORDINATES_LIST:
+			fread(&qty, sizeof(unsigned short), 1, file);
+			printf("Number of uv's coordinates: %d\n", qty);
+			for (i = 0; i < qty; ++i)
+			{
+				glm::vec2 uv;
+				fread(&uv.x, sizeof(float), 1, file);
+				fread(&uv.y, sizeof(float), 1, file);
+				if (uv.y < 0.0f) uv.y = fabs(uv.y);
+				uvs.push_back(uv);
+			}
+			break;
+		default:
+			fseek(file, chunkLength - 6, SEEK_CUR);
+		}
+	}
+
+	for (int j = 0; j < this->m_vertsNum; ++j)
+	{
+		normals.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+	}
+
+	for (int j = 0; j < this->m_polygonsNum; j += 3)
+	{
+		glm::vec3 v1, v2, v3;
+		glm::vec3 edge1, edge2;
+		v1 = vertices[indices[j]];
+		v2 = vertices[indices[j + 1]];
+		v3 = vertices[indices[j + 2]];
+		edge1 = v2 - v1;
+		edge2 = v3 - v1;
+		glm::vec3 normal = glm::cross(edge1, edge2);
+		normals[indices[j]] += normal;
+		normals[indices[j + 1]] += normal;
+		normals[indices[j + 2]] += normal;
+	}
+
+	for (int j = 0; j < this->m_vertsNum; ++j)
+	{
+		normals[j] = glm::normalize(normals[j]);
+	}
+
+	fclose(file);
+
+	return true;
 }

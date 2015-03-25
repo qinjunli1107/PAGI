@@ -5,7 +5,7 @@
 #include <OpenGL\glfw3.h>
 #include <OpenGL\GLM\glm.hpp>
 #include <OpenGL\GLM\gtx\transform.hpp>
-#include <SOIL2\SOIL2.h>
+#include <OpenGL\SOIL2.h>
 
 class Texture
 {

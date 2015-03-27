@@ -10,7 +10,7 @@ uniform sampler2D textureSampler;
 uniform vec4 lightDirection;
 uniform vec4 lightColor;
 uniform vec4 pickColor;
-uniform vec4 picking;
+uniform int picking;
 
 void main()
 {	
@@ -19,5 +19,5 @@ void main()
 	lightDir.y = -lightDir.y;
 	float lightPower = clamp(dot((lightDir).xyz, normal), 0.0f, 1.0f);
 	vec3 diffuse = lightPower * lightColor.xyz;
-	color = picking.x * (pickColor.rgb + fragmentColor) + (1.0f - picking.x) * clamp(diffuse * outColor + fragmentColor, 0.0f, 1.0f);
+	color = picking * (pickColor.rgb + fragmentColor) + (1 - picking) * clamp(diffuse * outColor + fragmentColor, 0.0f, 1.0f);
 }

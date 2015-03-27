@@ -29,6 +29,7 @@ void Input::Shutdown()
 
 glm::vec2 Input::GetMousePosition()
 {
+	glfwGetCursorPos(this->m_window, &(double)this->m_mouseX, &(double)this->m_mouseY);
 	return glm::vec2(this->m_mouseX, this->m_mouseY);
 }
 

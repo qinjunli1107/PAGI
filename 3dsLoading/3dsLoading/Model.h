@@ -50,6 +50,8 @@ private:
 	GLuint m_lightDirectionID;
 	GLuint m_lightColorID;
 	GLuint m_matrixID;
+	GLuint m_pickColorID;
+	GLuint m_pickingID;
 
 	glm::mat4 m_modelMatrix;
 	glm::mat4 m_translationMatrix;
@@ -63,13 +65,16 @@ private:
 
 	char m_name[20];
 
+	GLchar pickColor[4];
+
 public:
 	Model();
 	~Model();
 
-	bool Initialize(GLuint shaderID, Camera* camera);
+	bool Initialize(GLuint shaderID, Camera* camera, int i);
 	void Frame(Camera* camera);
 	void Render(Camera* camera, Light* light);
+	void RenderSelectionMode(Camera* camera);
 	void Shutdown();
 
 	void Rotate(float angle, glm::vec3 axis);
@@ -82,6 +87,8 @@ public:
 	void Unselect();
 
 	Model* GetParent();
+
+	GLchar* GetPickColor();
 
 private:
 	void RecalculateModelMatrix();

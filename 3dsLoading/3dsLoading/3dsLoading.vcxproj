@@ -80,6 +80,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="System.h" />
     <ClInclude Include="Texture.h" />
   </ItemGroup>

@@ -34,6 +34,9 @@ private:
 
 	int m_currentSelected;
 	bool m_selectionKeyPressed;
+	bool m_mousePressed;
+	bool m_selectedMode;
+	float timer;
 
 public:
 	Graphics();
@@ -52,8 +55,6 @@ private:
 	string LoadShaderCode(const char const* shaderPath);
 	void CompileShader(string  shaderCode, GLuint shaderCodeID);
 	void Render();
-
-	void SelectNext();
-	void SelectPrevious();
+	void SelectPixel();
 };
 

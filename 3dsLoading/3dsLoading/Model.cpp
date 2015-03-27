@@ -20,11 +20,17 @@ Model::~Model()
 {
 }
 
-bool Model::Initialize(GLuint shaderID, Camera* camera)
+bool Model::Initialize(GLuint shaderID, Camera* camera, int i)
 {
+	this->pickColor[0] = (i & 0x000000FF) >> 0;
+	this->pickColor[1] = (i & 0x0000FF00) >> 8;
+	this->pickColor[2] = (i & 0x00FF0000) >> 16;
+	this->pickColor[3] = 255;
+
 	this->m_position = glm::vec3(0.f);
 	this->m_translationMatrix = glm::translate(this->m_position);
 	this->m_rotationMatrix = glm::mat4(1.0f);
+	this->RecalculateModelMatrix();
 
 	if (!LoadOBJ("../Models/Sphere.obj", this->m_vertices, this->m_uvs, this->m_normals, this->m_indices))
 	{
@@ -96,6 +102,8 @@ bool Model::Initialize(GLuint shaderID, Camera* camera)
 	this->m_lightDirectionID = glGetUniformLocation(this->m_shaderID, "lightDirection");
 	this->m_lightColorID = glGetUniformLocation(this->m_shaderID, "lightColor");
 	this->m_selectionColorID = glGetUniformLocation(this->m_shaderID, "selectionColor");
+	this->m_pickColorID = glGetUniformLocation(this->m_shaderID, "pickColor");
+	this->m_pickingID = glGetUniformLocation(this->m_shaderID, "picking");
 
 	return true;
 }
@@ -124,6 +132,7 @@ void Model::Frame(Camera* camera)
 
 void Model::Render(Camera* camera, Light* light)
 {
+	glUseProgram(this->m_shaderID);
 	glm::mat4 modelViewProjection = camera->GetProjectionMatrix() * camera->GetViewMatrix() * this->m_modelMatrix;
 	glUniformMatrix4fv(this->m_matrixID, 1, GL_FALSE, &modelViewProjection[0][0]);
 	glm::vec4 lightDir = glm::vec4(light->GetDirection(), 0.0f) * this->m_modelMatrix;
@@ -131,6 +140,7 @@ void Model::Render(Camera* camera, Light* light)
 	glm::vec4 lightColor = light->GetColor();
 	glUniform4f(this->m_lightColorID, lightColor.r, lightColor.g, lightColor.b, lightColor.w);
 	glUniform3f(this->m_selectionColorID, this->m_selectionColor.r, this->m_selectionColor.g, this->m_selectionColor.b);
+	glUniform4f(this->m_pickingID, 0.0f, 0.0f, 0.0f, 0.0f);
 
 	glBindTexture(GL_TEXTURE_2D, this->m_texture->GetTextureID());
 
@@ -534,4 +544,25 @@ bool Model::Load3DS(const char const* filePath, std::vector<glm::vec3>& vertices
 	fclose(file);
 
 	return true;
+}
+
+void Model::RenderSelectionMode(Camera* camera)
+{
+	glm::mat4 modelViewProjection = camera->GetProjectionMatrix() * camera->GetViewMatrix() * this->m_modelMatrix;
+	glUniformMatrix4fv(this->m_matrixID, 1, GL_FALSE, &modelViewProjection[0][0]);
+	glUniform4f(this->m_pickColorID, (float)pickColor[0] / 255.0f, (float)pickColor[1] / 255.0f, (float)pickColor[2] / 255.0f, (float)pickColor[3] / 255.0f);
+	glUniform4f(this->m_pickingID, 1.0f, 0.0f, 0.0f, 0.0f);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->m_indexBufferID);
+	glDrawElements(GL_TRIANGLES, this->m_indices.size(), GL_UNSIGNED_SHORT, (void*)0);
+
+	for (std::vector<Model*>::iterator it = this->m_children.begin(); it != this->m_children.end(); ++it)
+	{
+		(*it)->RenderSelectionMode(camera);
+	}
+}
+
+GLchar* Model::GetPickColor()
+{
+	return this->pickColor;
 }

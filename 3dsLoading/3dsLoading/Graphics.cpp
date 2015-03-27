@@ -8,6 +8,9 @@ Graphics::Graphics()
 	this->m_vertexArrayID = 0;
 	this->m_currentSelected = -1;
 	this->m_selectionKeyPressed = false;
+	this->m_mousePressed = false;
+	this->m_selectedMode = false;
+	this->timer = 0.0f;
 }
 
 Graphics::~Graphics()
@@ -26,7 +29,6 @@ bool Graphics::Initialize(string appName)
 	glfwWindowHint(GLFW_SAMPLES, 4);	//4x antialiasing
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);	//Setting OpenGL 3.3 version
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); //older OpenGL version not included
 
 	this->m_window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, appName.c_str(), NULL, NULL);
@@ -68,21 +70,21 @@ bool Graphics::Initialize(string appName)
 	Model* firstChild = new Model();
 	GLuint shaderID = this->InitializeShaders("VertexShader.glsl", "FragmentShader.glsl");
 
-	if (!firstChild->Initialize(shaderID, this->m_camera))
+	if (!firstChild->Initialize(shaderID, this->m_camera, 0))
 	{
 		return false;
 	}
 
 	firstChild->Translate(glm::vec3(-30.0f, 0.0f, 0.0f)); 
 
-	if (!model->Initialize(shaderID, this->m_camera))
+	if (!model->Initialize(shaderID, this->m_camera, 1))
 	{
 		fprintf(stderr, "Failed to load model (say what?!)\n");
 		return false;
 	}
 
 	Model* secondChild = new Model();
-	if (!secondChild->Initialize(shaderID, this->m_camera))
+	if (!secondChild->Initialize(shaderID, this->m_camera, 2))
 	{
 		return false;
 	}
@@ -90,7 +92,7 @@ bool Graphics::Initialize(string appName)
 	secondChild->Translate(glm::vec3(-30.0f, 30.0f, 0.0f));
 
 	Model* thirdChild = new Model();
-	if (!thirdChild->Initialize(shaderID, this->m_camera))
+	if (!thirdChild->Initialize(shaderID, this->m_camera, 3))
 	{
 		return false;
 	}
@@ -121,27 +123,40 @@ void Graphics::Frame(float deltaTime)
 
 #pragma region Selecting model part
 
-	if (!this->m_selectionKeyPressed)
+	if (this->m_selectedMode)
 	{
-		if (this->m_input->IsKeyDown(KeyCodes::LeftArrow))
+		timer += deltaTime;
+		if (timer > 0.003f)
 		{
-			this->m_selectionKeyPressed = true;
-			this->SelectPrevious();
+			timer = 0.0f;
+			this->m_selectedMode = false;
+			this->SelectPixel();
 		}
-		if (this->m_input->IsKeyDown(KeyCodes::RightArrow))
+		if (!this->m_mousePressed)
 		{
-			this->m_selectionKeyPressed = true;
-			this->SelectNext();
-		}
-	}
-	else
-	{
-		if (this->m_input->IsKeyUp(KeyCodes::LeftArrow) && this->m_input->IsKeyUp(KeyCodes::RightArrow))
-		{
-			this->m_selectionKeyPressed = false;
+			this->m_selectedMode = false;
+			this->SelectPixel();
 		}
 	}
 
+	if (this->m_input->IsMouseButtonDown(MouseButtons::Left) && !this->m_mousePressed)
+	{
+		this->m_mousePressed = true;
+		this->m_selectedMode = true;
+	}
+
+	if (this->m_mousePressed)
+	{
+		if (this->m_input->IsMouseButtonUp(MouseButtons::Left))
+		{
+			this->m_mousePressed = false;
+
+			glFlush();
+			glFinish();
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		}
+	}
+	
 	if (this->m_currentSelected >= 0)
 	{
 		if (this->m_input->IsKeyDown(KeyCodes::I))
@@ -218,11 +233,24 @@ GLFWwindow* Graphics::GetWindow()
 void Graphics::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	for each (Model* m in this->m_models)
+	if (!this->m_selectedMode)
 	{
-		if (m->GetParent() == nullptr)
+		for each (Model* m in this->m_models)
 		{
-			m->Render(this->m_camera, this->m_light);
+			if (m->GetParent() == nullptr)
+			{
+				m->Render(this->m_camera, this->m_light);
+			}
+		}
+	}
+	else
+	{
+		for (int i = 0; i < this->m_models.size(); ++i)
+		{
+			if (this->m_models[i]->GetParent() == nullptr)
+			{
+				this->m_models[i]->RenderSelectionMode(this->m_camera);
+			}
 		}
 	}
 	glfwSwapBuffers(this->m_window);
@@ -309,41 +337,36 @@ Input* Graphics::GetInput()
 	return this->m_input;
 }
 
-void Graphics::SelectNext()
+void Graphics::SelectPixel()
 {
-	if (this->m_currentSelected >= 0)
+	GLchar color[4];
+	glm::vec2 mousePosition = this->m_input->GetMousePosition();
+
+	glReadPixels(mousePosition.x, SCREEN_HEIGHT - mousePosition.y - 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, color);
+
+	GLchar* pickColor = NULL;
+	bool hit = false;
+	for (int i = 0; i < this->m_models.size(); ++i)
 	{
-		this->m_models[this->m_currentSelected]->Unselect();
+		pickColor = this->m_models[i]->GetPickColor();
+		if (pickColor[0] == color[0] && pickColor[1] == color[1] && pickColor[2] == color[2])
+		{
+			hit = true;
+			this->m_currentSelected = i;
+			this->m_models[i]->Select();
+		}
 	}
-	++this->m_currentSelected;
-	if (this->m_currentSelected >= this->m_models.size())
+
+	if (!hit)
 	{
 		this->m_currentSelected = -1;
 	}
-	else
-	{
-		this->m_models[this->m_currentSelected]->Select();
-	}
-}
 
-void Graphics::SelectPrevious()
-{
-	if (this->m_currentSelected >= 0)
+	for (int i = 0; i < this->m_models.size(); ++i)
 	{
-		this->m_models[this->m_currentSelected]->Unselect();
-		--this->m_currentSelected;
-	}
-	else
-	{
-		this->m_currentSelected = this->m_models.size() - 1;
-	}
-
-	if (this->m_currentSelected < 0)
-	{
-		this->m_currentSelected = -1;
-	}
-	else
-	{
-		this->m_models[this->m_currentSelected]->Select();
+		if (i != this->m_currentSelected)
+		{
+			this->m_models[i]->Unselect();
+		}
 	}
 }

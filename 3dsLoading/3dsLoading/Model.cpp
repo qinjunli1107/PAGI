@@ -197,6 +197,7 @@ void Model::RecalculateModelMatrix()
 
 bool Model::LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices, std::vector<glm::vec2>& uvs, std::vector<glm::vec3>& normals, std::vector<unsigned short>& indices)
 {
+	printf("Loading obj file: %s\n", filePath);
 	std::ifstream modelFile;
 	modelFile.open(filePath, std::ios::in);
 
@@ -213,6 +214,7 @@ bool Model::LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices
 	if (!modelFile.is_open())
 	{
 		fprintf(stderr, "Couldn't find any file with this path: %s\n", filePath);
+		return false;
 	}
 	else
 	{
@@ -371,7 +373,7 @@ bool Model::LoadOBJ(const char const* filePath, std::vector<glm::vec3>& vertices
 									if (equal)
 									{
 										std::string texture = mtlLine.substr(8, mtlLine.length() - 1);
-										printf("Model diffuse texture: %s\n", texture.c_str());
+										//printf("Model diffuse texture: %s\n", texture.c_str());
 										this->m_texture = new Texture();
 										!this->m_texture->Initialize(&texture);
 									}
